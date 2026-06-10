@@ -9,5 +9,6 @@ def kernel_randint4x(x_ptr, n_rounds: tl.constexpr, N: tl.constexpr, XBLOCK: tl.
         mask = (global_offset + indices) < N
         tl.store(x_ptr + global_offset + indices, rand_vals, mask)  # Store the random numbers
 
+
 y_cali = torch.zeros(shape, dtype=eval('torch.int32')).npu()
 kernel_randint4x[ncore, 1, 1](y_cali, 10, numel, xblock)

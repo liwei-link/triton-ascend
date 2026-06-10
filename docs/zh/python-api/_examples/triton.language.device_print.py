@@ -1,6 +1,7 @@
 import triton
 import triton.language as tl
 
+
 @triton.jit
 def kernel(x_ptr):
     idx = tl.arange(0, 3)

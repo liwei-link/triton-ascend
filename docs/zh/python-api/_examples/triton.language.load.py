@@ -1,6 +1,5 @@
 @triton.jit
-def kernel(out_ptr0, in_ptr0, in_ptr1, in_ptr2, stride_in_r,
-           XS: tl.constexpr, RS: tl.constexpr):
+def kernel(out_ptr0, in_ptr0, in_ptr1, in_ptr2, stride_in_r, XS: tl.constexpr, RS: tl.constexpr):
     pid = tl.program_id(0)
     in_idx0 = pid * XS + tl.arange(0, XS)
     in_idx1 = tl.arange(0, RS)

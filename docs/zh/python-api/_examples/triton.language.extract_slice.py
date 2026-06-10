@@ -1,3 +1,4 @@
+'''
 triton.language.extract_slice(
     ful,
     offsets,
@@ -6,3 +7,4 @@ triton.language.extract_slice(
     _builder=None,
     _generator=None
 ) -> tensor
+'''

@@ -1,6 +1,5 @@
 @triton.jit
-def kernel(output_ptr, x_ptr, y_ptr, z_ptr, output_ptr1,
-           XB: tl.constexpr, YB: tl.constexpr, ZB: tl.constexpr):
+def kernel(output_ptr, x_ptr, y_ptr, z_ptr, output_ptr1, XB: tl.constexpr, YB: tl.constexpr, ZB: tl.constexpr):
     block_ptr_in = tl.make_block_ptr(
         base=x_ptr,
         shape=(XB, YB, ZB),

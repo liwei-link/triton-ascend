@@ -1,5 +1,6 @@
 import triton.language as tl
 
+
 @triton.jit
 def basic_static_print_example(x_ptr, BLOCK_SIZE: tl.constexpr):
     # Print the value of constants at compile time

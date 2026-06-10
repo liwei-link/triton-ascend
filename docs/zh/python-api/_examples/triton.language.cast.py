@@ -4,6 +4,7 @@ def cast_example():
     y = tl.cast(x, tl.int32)
     return y
 
+
 @triton.jit
 def cast_advanced_example():
     x = tl.zeros([2, 3], dtype=tl.float32)

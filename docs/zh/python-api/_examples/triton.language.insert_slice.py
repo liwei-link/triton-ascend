@@ -1,3 +1,4 @@
+'''
 triton.language.insert_slice(
     ful,
     sub,
@@ -7,3 +8,4 @@ triton.language.insert_slice(
     _builder=None,
     _generator=None
 ) -> tensor
+'''

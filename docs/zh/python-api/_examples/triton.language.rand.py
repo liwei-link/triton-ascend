@@ -7,6 +7,7 @@ def kernel_rand(x_ptr, n_rounds: tl.constexpr, N: tl.constexpr, XBLOCK: tl.const
         rand_vals = tl.rand(5, 10 + global_offset, n_rounds)  # Generate a random number for each index
         tl.store(x_ptr + global_offset, rand_vals)  # Store the random number
 
+
 y_calf = torch.zeros(shape, dtype=eval('torch.float32')).npu()
 numel = y_calf.numel()
 ncore = 1 if numel < 32 else 32

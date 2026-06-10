@@ -1,17 +1,21 @@
 @triton.jit
 def matmul_kernel(
-        a_ptr, b_ptr, c_ptr,
-        M: tl.constexpr,
-        N: tl.constexpr,
-        K: tl.constexpr,
-        acc_dtype: tl.constexpr,
-        stride_am: tl.constexpr,
-        stride_ak: tl.constexpr,
-        stride_bk: tl.constexpr,
-        stride_bn: tl.constexpr,
-        stride_cm: tl.constexpr,
-        stride_cn: tl.constexpr,
-        BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr, BLOCK_K: tl.constexpr,
+    a_ptr,
+    b_ptr,
+    c_ptr,
+    M: tl.constexpr,
+    N: tl.constexpr,
+    K: tl.constexpr,
+    acc_dtype: tl.constexpr,
+    stride_am: tl.constexpr,
+    stride_ak: tl.constexpr,
+    stride_bk: tl.constexpr,
+    stride_bn: tl.constexpr,
+    stride_cm: tl.constexpr,
+    stride_cn: tl.constexpr,
+    BLOCK_M: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    BLOCK_K: tl.constexpr,
 ):
     pid = tl.program_id(axis=0)
     num_pid_n = tl.cdiv(N, BLOCK_N)

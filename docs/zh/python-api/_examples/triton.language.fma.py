@@ -1,7 +1,6 @@
 @triton.jit
-def fn_npu_(output_ptr, x_ptr, y_ptr, z_ptr,
-            XB: tl.constexpr, YB: tl.constexpr, ZB: tl.constexpr,
-            XNUMEL: tl.constexpr, YNUMEL: tl.constexpr, ZNUMEL: tl.constexpr):
+def fn_npu_(output_ptr, x_ptr, y_ptr, z_ptr, XB: tl.constexpr, YB: tl.constexpr, ZB: tl.constexpr, XNUMEL: tl.constexpr,
+            YNUMEL: tl.constexpr, ZNUMEL: tl.constexpr):
     xoffs = tl.program_id(0) * XB
     yoffs = tl.program_id(1) * YB
     zoffs = tl.program_id(2) * ZB

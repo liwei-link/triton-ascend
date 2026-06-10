@@ -85,18 +85,24 @@ def _load_module(module_name, file_path):
     """Load a Python module by file path (used for dirs with hyphens or
     when the parent package isn't on sys.path)."""
     spec = _ilu.spec_from_file_location(module_name, file_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {module_name!r} from {file_path!r}")
     module = _ilu.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-# Inject stubs for C extensions so triton source can be imported without
-# compiling the native extension.  Doc generation never needs the real binary.
+# Only inject stubs for C extensions when triton isn't actually importable
+# (e.g. RTD builds without CANN).  In a real dev env we prefer the actual
+# triton install so the generated docs match runtime behaviour.
 _sys.path.insert(0, _os.path.join(_REPO, "python"))
-_load_module(
-    "docs.zh._mock._triton_mock",
-    _os.path.join(_HERE, "_mock", "_triton_mock.py"),
-).install()
+try:
+    import triton  # noqa: F401,E402
+except ImportError:
+    _load_module(
+        "docs.zh._mock._triton_mock",
+        _os.path.join(_HERE, "_mock", "_triton_mock.py"),
+    ).install()
 
 import triton  # noqa: E402
 import triton.language.extra as _tl_extra  # noqa: E402
@@ -114,10 +120,12 @@ import sphinx.util.inspect  # noqa: E402
 # autodoc must look at the wrapped Python function, not the JITFunction object.
 def _unwrap_jit(fn):
     """Wrap a Sphinx inspection helper so it sees JITFunction.fn instead."""
+
     def wrapper(obj, **kwargs):
         if isinstance(obj, triton.runtime.JITFunction):
             obj = obj.fn
         return fn(obj, **kwargs)
+
     return wrapper
 
 

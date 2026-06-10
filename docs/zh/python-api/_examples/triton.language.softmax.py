@@ -1,7 +1,6 @@
 @triton.jit
-def tt_softmax_3d(in_ptr, out_ptr,
-                  xnumel: tl.constexpr, ynumel: tl.constexpr, znumel: tl.constexpr,
-                  XB: tl.constexpr, YB: tl.constexpr, ZB: tl.constexpr):
+def tt_softmax_3d(in_ptr, out_ptr, xnumel: tl.constexpr, ynumel: tl.constexpr, znumel: tl.constexpr, XB: tl.constexpr,
+                  YB: tl.constexpr, ZB: tl.constexpr):
     xoffs = tl.program_id(0) * XB
     yoffs = tl.program_id(1) * YB
     zoffs = tl.program_id(2) * ZB

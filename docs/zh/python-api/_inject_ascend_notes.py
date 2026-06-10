@@ -10,6 +10,8 @@ import os as _os
 
 _path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "_ascend_constraints.py")
 _spec = _importlib_util.spec_from_file_location("_ascend_constraints", _path)
+if _spec is None or _spec.loader is None:
+    raise ImportError(f"cannot load _ascend_constraints from {_path!r}")
 _mod = _importlib_util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 ASCEND_CONSTRAINTS = _mod.CONSTRAINTS
@@ -22,7 +24,7 @@ def _read_example(name):
     """Read usage example code from a .py file."""
     path = _os.path.join(_EXAMPLES_DIR, f"{name}.py")
     if _os.path.exists(path):
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return f.read()
     return ""
 

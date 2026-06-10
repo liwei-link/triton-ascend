@@ -244,28 +244,28 @@ void init_ascend_ir(py::module &&m) {
                                              py::module_local())
       .def("get_value", &AffineConstantExpr::getValue)
       .attr("__doc__") =
-          "An affine expression that is a constant integer value. "
-          "This is the simplest form of an affine expression, "
-          "representing just a numeric constant.";
+      "An affine expression that is a constant integer value. "
+      "This is the simplest form of an affine expression, "
+      "representing just a numeric constant.";
   py::class_<AffineDimExpr, AffineExpr>(m, "affine_dim_expr",
                                         py::module_local())
       .def("get_position", &AffineDimExpr::getPosition)
       .attr("__doc__") =
-          "An affine expression representing a single dimension variable. "
-          "Dimensions typically correspond to loop induction variables.";
+      "An affine expression representing a single dimension variable. "
+      "Dimensions typically correspond to loop induction variables.";
   py::class_<AffineSymbolExpr, AffineExpr>(m, "affine_symbol_expr",
                                            py::module_local())
       .def("get_position", &AffineSymbolExpr::getPosition)
       .attr("__doc__") =
-          "An affine expression representing a single symbol variable. "
-          "Symbols represent unknown but constant values (e.g., tile sizes).";
+      "An affine expression representing a single symbol variable. "
+      "Symbols represent unknown but constant values (e.g., tile sizes).";
   py::class_<AffineBinaryOpExpr, AffineExpr>(m, "affine_binary_op_expr",
                                              py::module_local())
       .def("get_lhs", &AffineBinaryOpExpr::getLHS)
       .def("get_rhs", &AffineBinaryOpExpr::getRHS)
       .attr("__doc__") =
-          "An affine expression composed of two sub-expressions combined by "
-          "an operator (add, sub, mul, mod, floordiv, ceildiv).";
+      "An affine expression composed of two sub-expressions combined by "
+      "an operator (add, sub, mul, mod, floordiv, ceildiv).";
 
   auto affineMapClass =
       py::class_<AffineMap>(m, "affine_map", py::module_local());

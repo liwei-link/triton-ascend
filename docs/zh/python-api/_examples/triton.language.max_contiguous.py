@@ -1,5 +1,5 @@
 @triton.jit
-def triton_max_contiguous(A, B, BLOCK_SIZE : tl.constexpr):
+def triton_max_contiguous(A, B, BLOCK_SIZE: tl.constexpr):
     offsets = tl.arange(0, BLOCK_SIZE)
     val = tl.load(A + offsets)
     # Declare that the first BLOCK_SIZE elements in offset are contiguous

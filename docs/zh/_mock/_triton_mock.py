@@ -19,11 +19,11 @@ from enum import Enum
 from typing import Union
 from unittest.mock import MagicMock
 
-
 # ---------------------------------------------------------------------------
 # Minimal stubs for triton.backends.compiler / driver classes
 # (keeping them as real Python classes avoids isinstance issues in autodoc)
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class _GPUTarget:
@@ -38,6 +38,7 @@ class _Language(Enum):
 
 
 class _BaseBackend(metaclass=ABCMeta):
+
     def __init__(self, target) -> None:
         self.target = target
 
@@ -48,6 +49,7 @@ class _BaseBackend(metaclass=ABCMeta):
 
 
 class _DriverBase(metaclass=ABCMeta):
+
     @classmethod
     @abstractmethod
     def is_active(cls):
@@ -93,10 +95,8 @@ def install() -> None:
 
     libtriton = _make_module("triton._C.libtriton", parent=_c)
     libtriton.getenv = lambda key, default="": os.environ.get(key, default)
-    libtriton.getenv_bool = (
-        lambda key, default=False: os.environ.get(key, "1" if default else "0").lower()
-        in ("1", "true", "yes")
-    )
+    libtriton.getenv_bool = (lambda key, default=False: os.environ.get(key, "1" if default else "0").lower() in
+                             ("1", "true", "yes"))
     libtriton.get_cache_invalidating_env_vars = lambda: []
     libtriton.ir = MagicMock(name="triton._C.libtriton.ir")
     libtriton.buffer_ir = MagicMock(name="triton._C.libtriton.buffer_ir")
@@ -120,28 +120,29 @@ def install() -> None:
     # backends registered by a system-wide triton install).               #
     # ------------------------------------------------------------------ #
     _bk_compiler_mod = _make_module("triton.backends.compiler")
-    _bk_compiler_mod.GPUTarget   = _GPUTarget
-    _bk_compiler_mod.Language    = _Language
+    _bk_compiler_mod.GPUTarget = _GPUTarget
+    _bk_compiler_mod.Language = _Language
     _bk_compiler_mod.BaseBackend = _BaseBackend
 
     _bk_driver_mod = _make_module("triton.backends.driver")
     _bk_driver_mod.DriverBase = _DriverBase
 
     _bk = _make_module("triton.backends")
-    _bk.backends   = {}
+    _bk.backends = {}
     _bk.DriverBase = _DriverBase
-    _bk.compiler   = _bk_compiler_mod
+    _bk.compiler = _bk_compiler_mod
+    _bk.driver = _bk_driver_mod
 
     # ------------------------------------------------------------------ #
     # triton.backends.ascend  (CANN backend plugin)                       #
     # ------------------------------------------------------------------ #
     for _name in [
-        "triton.backends.ascend",
-        "triton.backends.ascend.driver",
-        "triton.backends.ascend.utils",
-        "triton.backends.ascend.compiler",
-        "triton.backends.ascend.backend_register",
-        "triton.backends.ascend.cpu_driver",
+            "triton.backends.ascend",
+            "triton.backends.ascend.driver",
+            "triton.backends.ascend.utils",
+            "triton.backends.ascend.compiler",
+            "triton.backends.ascend.backend_register",
+            "triton.backends.ascend.cpu_driver",
     ]:
         sys.modules[_name] = MagicMock(name=_name)
 
