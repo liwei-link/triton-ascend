@@ -72,3 +72,74 @@ html_static_path = ["_static"]
 html_css_files = [
     "custom.css",
 ]
+
+import os as _os
+import sys as _sys
+import importlib.util as _ilu
+
+_HERE = _os.path.dirname(__file__)
+_REPO = _os.path.abspath(_os.path.join(_HERE, "..", ".."))
+
+
+def _load_module(module_name, file_path):
+    """Load a Python module by file path (used for dirs with hyphens or
+    when the parent package isn't on sys.path)."""
+    spec = _ilu.spec_from_file_location(module_name, file_path)
+    module = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# Inject stubs for C extensions so triton source can be imported without
+# compiling the native extension.  Doc generation never needs the real binary.
+_sys.path.insert(0, _os.path.join(_REPO, "python"))
+_load_module(
+    "docs.zh._mock._triton_mock",
+    _os.path.join(_HERE, "_mock", "_triton_mock.py"),
+).install()
+
+import triton  # noqa: E402
+import triton.language.extra as _tl_extra  # noqa: E402
+
+# Extend the extra package path so triton.language.extra.cann is importable.
+_cann_lang_path = _os.path.join(_REPO, "third_party", "ascend", "language")
+if _cann_lang_path not in _tl_extra.__path__:
+    _tl_extra.__path__.append(_cann_lang_path)
+
+import sphinx.ext.autosummary  # noqa: E402
+import sphinx.util.inspect  # noqa: E402
+
+
+# JITFunction unwrap patch (from upstream triton v3.5.0 docs/conf.py):
+# autodoc must look at the wrapped Python function, not the JITFunction object.
+def _unwrap_jit(fn):
+    """Wrap a Sphinx inspection helper so it sees JITFunction.fn instead."""
+    def wrapper(obj, **kwargs):
+        if isinstance(obj, triton.runtime.JITFunction):
+            obj = obj.fn
+        return fn(obj, **kwargs)
+    return wrapper
+
+
+# get_documenter was removed in Sphinx 9; guard accordingly.
+if hasattr(sphinx.ext.autosummary, "get_documenter"):
+    _orig_get_documenter = sphinx.ext.autosummary.get_documenter
+
+    def _get_documenter(app, obj, parent):
+        if isinstance(obj, triton.runtime.JITFunction):
+            obj = obj.fn
+        return _orig_get_documenter(app, obj, parent)
+
+    sphinx.ext.autosummary.get_documenter = _get_documenter
+
+sphinx.util.inspect.unwrap_all = _unwrap_jit(sphinx.util.inspect.unwrap_all)
+sphinx.util.inspect.signature = _unwrap_jit(sphinx.util.inspect.signature)
+sphinx.util.inspect.object_description = _unwrap_jit(sphinx.util.inspect.object_description)
+
+
+def setup(app):
+    """Register custom Sphinx extensions."""
+    _load_module(
+        "docs.zh.python_api._inject_ascend_notes",
+        _os.path.join(_HERE, "python-api", "_inject_ascend_notes.py"),
+    ).setup(app)
