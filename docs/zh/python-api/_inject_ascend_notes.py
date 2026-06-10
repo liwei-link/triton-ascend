@@ -8,6 +8,10 @@ import functools as _functools
 import importlib.util as _importlib_util
 import os as _os
 
+from sphinx.util import logging as _sphinx_logging
+
+_logger = _sphinx_logging.getLogger(__name__)
+
 _path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "_ascend_constraints.py")
 _spec = _importlib_util.spec_from_file_location("_ascend_constraints", _path)
 if _spec is None or _spec.loader is None:
@@ -26,6 +30,7 @@ def _read_example(name):
     if _os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
+    _logger.warning("ascend constraints: example file missing for %r (%s)", name, path)
     return ""
 
 
@@ -58,8 +63,10 @@ def _build_note(data):
 
 def autodoc_process_docstring(app, what, name, obj, options, lines):
     """Callback for ``autodoc-process-docstring``."""
+    # An empty dict is a valid entry (constraints/example may be added later),
+    # so only skip when the API has no entry at all.
     data = ASCEND_CONSTRAINTS.get(name)
-    if not data:
+    if data is None:
         return
     note_lines = _build_note(data)
     lines.extend(note_lines)

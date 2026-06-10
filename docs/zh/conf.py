@@ -95,10 +95,22 @@ def _load_module(module_name, file_path):
 # Only inject stubs for C extensions when triton isn't actually importable
 # (e.g. RTD builds without CANN).  In a real dev env we prefer the actual
 # triton install so the generated docs match runtime behaviour.
+# TRITON_DOCS_FORCE_MOCK=1 skips the real import entirely; RTD always forces
+# the mock so its builds never depend on a half-working triton install.
 _sys.path.insert(0, _os.path.join(_REPO, "python"))
-try:
-    import triton  # noqa: F401,E402
-except ImportError:
+_force_mock = (_os.environ.get("TRITON_DOCS_FORCE_MOCK", "").lower() in ("1", "true", "yes")
+               or _os.environ.get("READTHEDOCS") == "True")
+if not _force_mock:
+    try:
+        # Broken installs fail in many ways beyond ImportError (RuntimeError
+        # from backend discovery, FileNotFoundError from compiler probes...);
+        # any failure means we fall back to the mock.
+        import triton  # noqa: F401,E402
+    except Exception as _exc:
+        print(f"import triton failed ({_exc!r}); building docs with mock stubs")
+        _force_mock = True
+
+if _force_mock:
     _load_module(
         "docs.zh._mock._triton_mock",
         _os.path.join(_HERE, "_mock", "_triton_mock.py"),

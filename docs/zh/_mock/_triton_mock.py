@@ -10,6 +10,7 @@ Usage – call ``install()`` before any ``import triton`` statement:
     _install_mock()
     import triton  # works without compiled _C extensions
 """
+import importlib.machinery
 import os
 import sys
 import types
@@ -76,7 +77,9 @@ def _make_module(name: str, parent=None) -> types.ModuleType:
     mod = types.ModuleType(name)
     mod.__package__ = name
     mod.__path__ = []
-    mod.__spec__ = None
+    # A real (non-None) spec keeps importlib.util.find_spec(name) working for
+    # third-party code probing optional triton submodules.
+    mod.__spec__ = importlib.machinery.ModuleSpec(name, loader=None, is_package=True)
     sys.modules[name] = mod
     if parent is not None:
         setattr(parent, name.rsplit(".", 1)[-1], mod)
@@ -85,13 +88,20 @@ def _make_module(name: str, parent=None) -> types.ModuleType:
 
 def install() -> None:
     """Populate sys.modules with lightweight stubs for all C extensions."""
-    if "triton._C" in sys.modules:
-        return  # already installed
+    if getattr(sys.modules.get("triton._C"), "__triton_doc_mock__", False):
+        return  # our stubs are already installed
+
+    # A failed real `import triton` leaves partially-initialized triton
+    # modules behind (e.g. a genuine triton._C without CANN backends); purge
+    # them so the stubs and the re-import start from a clean slate.
+    for _name in [n for n in sys.modules if n == "triton" or n.startswith("triton.")]:
+        del sys.modules[_name]
 
     # ------------------------------------------------------------------ #
     # triton._C.libtriton  (must come first – imported at triton load)    #
     # ------------------------------------------------------------------ #
     _c = _make_module("triton._C")
+    _c.__triton_doc_mock__ = True
 
     libtriton = _make_module("triton._C.libtriton", parent=_c)
     libtriton.getenv = lambda key, default="": os.environ.get(key, default)
