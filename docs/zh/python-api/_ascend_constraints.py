@@ -93,12 +93,17 @@ CONSTRAINTS = {
     "triton.language.argmax": {
         "constraints": [
             "DataType: Ascend does not support fp64, uint16, uint32, uint64 (hardware limitation).",
+            "``tie_break_left``: Ascend 与 GPU 行为一致，默认值为 True，返回最左侧最大值的下标",
+            "当输入含 nan/inf 时，返回 inf 所在下标（与 GPU 行为一致）",
+            "keep_dims=True 需更多测试规格覆盖，目前已测 3D dim=2 情况下支持",
         ],
         "example": "triton.language.argmax",
     },
     "triton.language.argmin": {
         "constraints": [
             "DataType: Ascend does not support fp64, uint16, uint32, uint64 (hardware limitation).",
+            "``tie_break_left``: Ascend 与 GPU 行为一致，默认值为 True，返回最左侧最小值的下标",
+            "keep_dims=True 需更多测试规格覆盖，目前已测 3D dim=2 情况下支持",
         ],
         "example": "triton.language.argmin",
     },
@@ -556,6 +561,7 @@ CONSTRAINTS = {
         "constraints": [
             "DataType: Ascend does not support fp64, uint16, uint32, uint64 (hardware limitation).",
             "``return_indices``: 当axis=None时不支持return_indices=True",
+            "keep_dims=True 需更多测试规格覆盖，目前已测 3D dim=2 情况下支持",
         ],
         "example":
         "triton.language.max",
@@ -582,6 +588,7 @@ CONSTRAINTS = {
         "constraints": [
             "DataType: Ascend does not support fp64, uint16, uint32, uint64 (hardware limitation).",
             "``return_indices``: 当axis=None时不支持return_indices=True",
+            "keep_dims=True 需更多测试规格覆盖，目前已测 3D dim=2 情况下支持",
         ],
         "example":
         "triton.language.min",
@@ -746,6 +753,14 @@ CONSTRAINTS = {
         ],
         "example": "triton.language.sub",
     },
+    "triton.language.sum": {
+        "constraints": [
+            "DataType: Ascend does not support uint16, uint32, uint64 (hardware limitation).",
+            "``dtype`` (社区 Triton 3.5.0 新增参数): 当前版本基于 Triton 3.2.0，暂不支持 dtype 参数；升级至 3.5.0 后将完整支持",
+            "keep_dims=True 需更多测试规格覆盖，目前已测 3D dim=2 情况下支持",
+        ],
+        "example": "triton.language.sum",
+    },
     "triton.language.sync_block_all": {
         "constraints": [
             "``mode``: 必须为 'all_cube'、'all_vector' 或 'all' 之一",
@@ -822,6 +837,7 @@ CONSTRAINTS = {
     "triton.language.xor_sum": {
         "constraints": [
             "DataType: Ascend does not support uint16, uint32, uint64 (hardware limitation).",
+            "DataType: fp16、fp32、bf16 在 GPU 和 Ascend 上均不支持（xor_sum 仅适用于整数类型）",
             "keep_dims=True需更多测试规格覆盖，目前已测3D dim=2情况下支持",
         ],
         "example":
