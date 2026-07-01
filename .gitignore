@@ -27,7 +27,9 @@ python/triton/backends/*
 !python/triton/backends/driver.py
 
 # Language extras
-python/triton/language/extra
+python/triton/language/extra/*
+!python/triton/language/extra/__init__.py
+!python/triton/language/extra/libdevice.py
 
 # Tools extras
 python/triton/tools/extra
@@ -63,6 +65,7 @@ cmake-build-*
 cuobjdump
 nvdisasm
 ptxas
+ptxas-blackwell
 
 # Third-party include
 third_party/nvidia/backend/include
@@ -84,7 +87,11 @@ docs/sg_execution_times.rst
 /compile_commands.json
 .vscode
 .vs
+<<<<<<< HEAD
 .idea/
+=======
+.cursor
+>>>>>>> 85400f80bf859a34ad7a746ffda877faf80312ab
 
 # Vim
 *.swp
