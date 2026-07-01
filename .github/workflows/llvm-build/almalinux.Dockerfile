@@ -1,4 +1,5 @@
-FROM almalinux:8
+# https://github.com/AlmaLinux/container-images/blob/9f9b3c8c8cf4a57fd42f362570ff47c75788031f/default/amd64/Dockerfile
+FROM almalinux:8.10-20250411
 ARG llvm_dir=llvm-project
 # Add the cache artifacts and the LLVM source tree to the container
 COPY sccache /sccache
@@ -7,8 +8,13 @@ ENV SCCACHE_DIR="/sccache"
 ENV SCCACHE_CACHE_SIZE="2G"
 
 RUN dnf install --assumeyes llvm-toolset
+<<<<<<< HEAD
 RUN dnf install --assumeyes python39-pip python39-devel git
 RUN alternatives --set python3 /usr/bin/python3.9
+=======
+RUN dnf install --assumeyes python38-pip python38-devel git
+RUN alternatives --set python3 /usr/bin/python3.8
+>>>>>>> 85400f80bf859a34ad7a746ffda877faf80312ab
 
 RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install --upgrade cmake ninja sccache lit nanobind
@@ -30,17 +36,23 @@ RUN cmake -GNinja -Bbuild \
   -DCMAKE_CXX_FLAGS="-Wno-everything" \
   -DCMAKE_LINKER=lld \
   -DCMAKE_INSTALL_PREFIX="/install" \
+<<<<<<< HEAD
   -Dnanobind_DIR="/usr/local/lib/python3.9/site-packages/nanobind/cmake" \
   -DPython3_EXECUTABLE=/usr/bin/python3.9 \
   -DPython_EXECUTABLE=/usr/bin/python3.9 \
+=======
+  -DPython3_EXECUTABLE="/usr/bin/python3.8" \
+  -DPython_EXECUTABLE="/usr/bin/python3.8" \
+>>>>>>> 85400f80bf859a34ad7a746ffda877faf80312ab
   -DLLVM_BUILD_UTILS=ON \
   -DLLVM_BUILD_TOOLS=ON \
   -DLLVM_ENABLE_ASSERTIONS=ON \
-  -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
+  -DMLIR_ENABLE_BINDINGS_PYTHON=OFF \
   -DLLVM_ENABLE_PROJECTS="mlir;lld" \
   -DLLVM_ENABLE_TERMINFO=OFF \
   -DLLVM_INSTALL_UTILS=ON \
   -DLLVM_TARGETS_TO_BUILD="host;NVPTX;AMDGPU" \
+  -DLLVM_ENABLE_ZSTD=OFF \
   /source/llvm-project/llvm
 
 RUN ninja -C build install
