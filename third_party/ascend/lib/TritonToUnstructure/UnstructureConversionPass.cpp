@@ -116,7 +116,7 @@ void normalizeDiscreteMaskAccessForFallback(MemAccOpTy &op,
 // ========================
 // 1. SIMT Fast-Path Gate
 //    The SIMT indirect lowering path is enabled only when:
-//      - compileOn91095Flag && forceSimtTemplateFlag
+//      - compileOn91095Flag && compileModeFlag == CompileMode::SimtTemplate
 //      - and the access is either:
 //          * unstructured, or has tag with 'route_discrete_mask_to_simt'
 //
@@ -519,7 +519,7 @@ LogicalResult UnstructuredMemAccessConverter<MemAccOpTy>::matchAndRewrite(
 
   // SIMT Indirect Fast-Path Lowering in 950 seiries
   bool indirectFastPathEnabled =
-      compileOn91095Flag && forceSimtTemplateFlag &&
+      compileOn91095Flag && compileModeFlag == CompileMode::SimtTemplate &&
       ((!ptrOffsetInfo.isStructured() && sizeInByte < 64) ||
        routeDiscreteMaskToSimt);
   bool rankWithinIndirectLoadStoreFastPathLimit = resultShape.size() <= 5;
