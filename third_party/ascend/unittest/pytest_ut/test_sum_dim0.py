@@ -63,6 +63,26 @@ types = [
     # (torch.int64,'int64'),  TODO: waiting for supporting or testing
 ]
 
+
+@triton.jit
+def triton_sum_dim0_dtype(in_ptr0, out_ptr0, M: tl.constexpr, N: tl.constexpr, MNUMEL: tl.constexpr,
+                          NNUMEL: tl.constexpr, out_dtype: tl.constexpr):
+    mblk_idx = tl.arange(0, MNUMEL)
+    nblk_idx = tl.arange(0, NNUMEL)
+
+    mmask = mblk_idx < M
+    nmask = nblk_idx < N
+
+    mask = (mmask[:, None]) & (nmask[None, :])
+
+    idx = mblk_idx[:, None] * N + nblk_idx[None, :]
+
+    x = tl.load(in_ptr0 + idx, mask=mask, other=0)
+
+    ret = tl.sum(x, 0, dtype=out_dtype)
+
+    tl.store(out_ptr0 + nblk_idx, ret, mask=nmask)
+
 # if shape axis = 32/256 , then actual shape = axis/element_size()
 shapes = [
     (57, 3, 64, 16),
@@ -131,3 +151,42 @@ def test_sum_dim0(dtype, sigtype, M, N, MNUMEL, NNUMEL):
     print(output)
 
     test_common.validate_cmp(sigtype, output, ans)
+
+
+@pytest.mark.parametrize('M, N, MNUMEL, NNUMEL', [
+    (57, 3, 64, 16),
+    (263, 3, 512, 8),
+])
+def test_sum_dim0_default_promotes_narrow_int(M, N, MNUMEL, NNUMEL):
+    # tl.sum's default dtype for a narrow (< 32-bit) signed integer input is now
+    # int32 (previously the reduction stayed at the input's own width, risking
+    # overflow). Writing the result into an int32 buffer, instead of one
+    # matching the int8 input, makes that promoted dtype directly observable
+    # rather than being silently truncated back to int8 on store.
+    x0 = test_common.generate_tensor(shape=(M, N), dtype='int8')
+    ans = torch.sum(x0.to(torch.int32), dim=0)
+
+    x0 = x0.npu()
+    output = torch.zeros((N, ), dtype=torch.int32).npu()
+    triton_sum_dim0_dtype[1, 1, 1](x0, output, M=M, N=N, MNUMEL=MNUMEL, NNUMEL=NNUMEL, out_dtype=None, debug=True)
+
+    test_common.validate_cmp('int32', output, ans)
+
+
+@pytest.mark.parametrize('M, N, MNUMEL, NNUMEL', [
+    (57, 3, 64, 16),
+    (263, 3, 512, 8),
+])
+def test_sum_dim0_explicit_dtype_override(M, N, MNUMEL, NNUMEL):
+    # A caller can still explicitly ask for the old auto-promotion behavior
+    # (float16 accumulated in float32) via the new `dtype` argument, even
+    # though it is no longer the default.
+    x0 = test_common.generate_tensor(shape=(M, N), dtype='float16')
+    ans = torch.sum(x0.to(torch.float32), dim=0)
+
+    x0 = x0.npu()
+    output = torch.zeros((N, ), dtype=torch.float32).npu()
+    triton_sum_dim0_dtype[1, 1, 1](x0, output, M=M, N=N, MNUMEL=MNUMEL, NNUMEL=NNUMEL, out_dtype=tl.float32,
+                                   debug=True)
+
+    test_common.validate_cmp('float32', output, ans)

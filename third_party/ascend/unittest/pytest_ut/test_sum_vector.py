@@ -54,6 +54,52 @@ def test_sum(dtype, shape):
     validate_cmp(dtype, torch_ref, triton_cal)
 
 
+@pytest.mark.parametrize("shape", [(1, ), (3, ), (8, ), (37, ), (64, ), (781, )])
+def test_sum_default_promotes_narrow_int(shape):
+    # tl.sum's default dtype for a narrow (< 32-bit) signed integer input is
+    # now int32 (previously the reduction stayed at the input's own width,
+    # risking overflow). Writing the result into a dedicated int32 buffer,
+    # instead of aliasing an element of the int16 input, makes that promoted
+    # dtype directly observable rather than being silently truncated back.
+
+    @libentry()
+    @triton.jit
+    def triton_kernel(out_ptr0, in_ptr0, XBLOCK: tl.constexpr):
+        idx = tl.arange(0, XBLOCK)
+        tmp0 = tl.load(in_ptr0 + idx)
+        tmp1 = tl.sum(tmp0)
+        tl.store(out_ptr0, tmp1)
+
+    x0 = generate_tensor(shape=shape, dtype='int16').npu()
+    out = torch.zeros((1, ), dtype=torch.int32).npu()
+    triton_kernel[1, 1, 1](out, x0, x0.numel())
+
+    torch_ref = torch.sum(x0.to(torch.int32))
+    validate_cmp('int32', torch_ref, out[0])
+
+
+@pytest.mark.parametrize("shape", [(1, ), (3, ), (8, ), (37, ), (64, ), (781, )])
+def test_sum_explicit_dtype_override(shape):
+    # A caller can still explicitly ask for the old auto-promotion behavior
+    # (float16 accumulated in float32) via the new `dtype` argument, even
+    # though it is no longer the default.
+
+    @libentry()
+    @triton.jit
+    def triton_kernel(out_ptr0, in_ptr0, XBLOCK: tl.constexpr):
+        idx = tl.arange(0, XBLOCK)
+        tmp0 = tl.load(in_ptr0 + idx)
+        tmp1 = tl.sum(tmp0, dtype=tl.float32)
+        tl.store(out_ptr0, tmp1)
+
+    x0 = generate_tensor(shape=shape, dtype='float16').npu()
+    out = torch.zeros((1, ), dtype=torch.float32).npu()
+    triton_kernel[1, 1, 1](out, x0, x0.numel())
+
+    torch_ref = torch.sum(x0.to(torch.float32))
+    validate_cmp('float32', torch_ref, out[0])
+
+
 @triton.jit
 def _reduce_combine(a, b):
     return a + b
