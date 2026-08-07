@@ -128,34 +128,69 @@ def test_no_debug_print_when_debug_is_false(capsys):
 
 
 def test_invalid_compile_mode_raises():
-    from triton.backends.ascend.compiler import NPUOptions
+    from triton.backends.ascend.compiler import NPUOptions, AscendBackend
+    from triton.backends.compiler import GPUTarget
+    # Create backend instance
+    target = GPUTarget("npu", "910_95", 0)
+    backend = AscendBackend(target)
 
+    # Create options with invalid compile_mode
+    options = NPUOptions(compile_mode="invalid")
+
+    # Validation now happens in compile_mode_setup
     with pytest.raises(ValueError, match="Invalid compile_mode='invalid'"):
-        NPUOptions(compile_mode="invalid")
+        backend.compile_mode_setup(options)
 
 
 def test_simd_simt_compile_mode_sets_mixed_parallel_mode():
-    from triton.backends.ascend.compiler import NPUOptions
+    from triton.backends.ascend.compiler import NPUOptions, AscendBackend
+    from triton.backends.compiler import GPUTarget
 
+    # Create backend instance
+    target = GPUTarget("npu", "910_95", 0)
+    backend = AscendBackend(target)
+
+    # Create options with compile_on_910_95=True to pass validation
     options = NPUOptions(compile_mode="simd_simt", compile_on_910_95=True)
+
+    # Call compile_mode_setup to apply compile_mode logic
+    backend.compile_mode_setup(options)
 
     assert options.parallel_mode == "mix_simd_simt"
     assert options.shared_mem_dynamic_size == 221184
 
 
 def test_simd_simt_template_compile_mode_is_accepted():
-    from triton.backends.ascend.compiler import NPUOptions
+    from triton.backends.ascend.compiler import NPUOptions, AscendBackend
+    from triton.backends.compiler import GPUTarget
 
+    # Create backend instance
+    target = GPUTarget("npu", "910_95", 0)
+    backend = AscendBackend(target)
+
+    # Create options with compile_on_910_95=True to pass validation
     options = NPUOptions(compile_mode="simd_simt_template", compile_on_910_95=True)
+
+    # Call compile_mode_setup to apply compile_mode logic
+    backend.compile_mode_setup(options)
 
     assert options.compile_mode == "simd_simt_template"
 
 
 def test_simt_template_compile_mode_is_a_deprecated_alias():
-    from triton.backends.ascend.compiler import NPUOptions
+    from triton.backends.ascend.compiler import NPUOptions, AscendBackend
+    from triton.backends.compiler import GPUTarget
 
+    # Create backend instance
+    target = GPUTarget("npu", "910_95", 0)
+    backend = AscendBackend(target)
+
+    # Create options with deprecated compile_mode
+    options = NPUOptions(compile_mode="simt_template", compile_on_910_95=True)
+
+    # Deprecation warning is now raised in compile_mode_setup
     with pytest.warns(DeprecationWarning, match="simd_simt_template"):
-        options = NPUOptions(compile_mode="simt_template", compile_on_910_95=True)
+        backend.compile_mode_setup(options)
 
     assert options.compile_mode == "simd_simt_template"
 

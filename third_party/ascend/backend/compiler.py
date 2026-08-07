@@ -1146,57 +1146,6 @@ class NPUOptions:
         from triton.backends.ascend import _apply_ascend_patch
 
         _apply_ascend_patch()
-        # Backward compatibility: legacy force options override compile_mode.
-        if self.force_simt_template:
-            warnings.warn(
-                "force_simt_template is deprecated, use compile_mode='simd_simt_template' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            object.__setattr__(self, "compile_mode", "simd_simt_template")
-
-        if self.force_simt_only:
-            warnings.warn(
-                "force_simt_only is deprecated, use compile_mode='simt_only' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            object.__setattr__(self, "compile_mode", "simt_only")
-
-        _validate_compile_mode(self.compile_mode)
-
-        # Parse compile_mode and set related fields
-        if self.compile_mode == "simd":
-            object.__setattr__(self, "parallel_mode", "simd")
-            if self.shared_mem_dynamic_size is None:
-                object.__setattr__(self, "shared_mem_dynamic_size", 221184)
-        elif self.compile_mode == "simd_simt":
-            if not self.compile_on_910_95:
-                raise ValueError(f"compile_mode='{self.compile_mode}' is only supported on 910_95. "
-                                 "A2/A3 targets do not support SIMT mix compile.")
-            object.__setattr__(self, "parallel_mode", "mix_simd_simt")
-            if self.shared_mem_dynamic_size is None:
-                object.__setattr__(self, "shared_mem_dynamic_size", 221184)
-        elif self.compile_mode in ("simd_simt_template", "simt_template", "unstructured_in_simt"):
-            if self.compile_mode != "simd_simt_template":
-                legacy_mode = self.compile_mode
-                warnings.warn(
-                    f"compile_mode='{legacy_mode}' is deprecated, "
-                    "use compile_mode='simd_simt_template' instead.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-                object.__setattr__(self, "compile_mode", "simd_simt_template")
-            if not self.compile_on_910_95:
-                raise ValueError(f"compile_mode='{self.compile_mode}' is only supported on 910_95. "
-                                 "A2/A3 targets do not support SIMT mix compile.")
-            if self.shared_mem_dynamic_size is None:
-                object.__setattr__(self, "shared_mem_dynamic_size", 221184)
-        elif self.compile_mode == "simt_only":
-            object.__setattr__(self, "force_simt_only", True)
-            object.__setattr__(self, "parallel_mode", "simt")
-            if self.shared_mem_dynamic_size is None:
-                object.__setattr__(self, "shared_mem_dynamic_size", 122880)
 
     def hash(self):
         key = "_".join([f"{name}-{val}" for name, val in self.__dict__.items()])
@@ -1283,6 +1232,59 @@ class AscendBackend(BaseBackend):
             # Include all binary file extensions (mlirbc is used in bytecode mode)
             self.binary_extensions = {"npubin", "mlirbc"}
 
+    def compile_mode_setup(self, options: NPUOptions) -> Any:
+        # Backward compatibility: legacy force options override compile_mode.
+        if options.force_simt_template:
+            warnings.warn(
+                "force_simt_template is deprecated, use compile_mode='simd_simt_template' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            object.__setattr__(options, "compile_mode", "simd_simt_template")
+
+        if options.force_simt_only:
+            warnings.warn(
+                "force_simt_only is deprecated, use compile_mode='simt_only' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            object.__setattr__(options, "compile_mode", "simt_only")
+
+        _validate_compile_mode(options.compile_mode)
+
+        # Parse compile_mode and set related fields
+        if options.compile_mode == "simd":
+            object.__setattr__(options, "parallel_mode", "simd")
+            if options.shared_mem_dynamic_size is None:
+                object.__setattr__(options, "shared_mem_dynamic_size", 221184)
+        elif options.compile_mode == "simd_simt":
+            if not options.compile_on_910_95:
+                raise ValueError(f"compile_mode='{options.compile_mode}' is only supported on 910_95. "
+                                 "A2/A3 targets do not support SIMT mix compile.")
+            object.__setattr__(options, "parallel_mode", "mix_simd_simt")
+            if options.shared_mem_dynamic_size is None:
+                object.__setattr__(options, "shared_mem_dynamic_size", 221184)
+        elif options.compile_mode in ("simd_simt_template", "simt_template", "unstructured_in_simt"):
+            if options.compile_mode != "simd_simt_template":
+                legacy_mode = options.compile_mode
+                warnings.warn(
+                    f"compile_mode='{legacy_mode}' is deprecated, "
+                    "use compile_mode='simd_simt_template' instead.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                object.__setattr__(options, "compile_mode", "simd_simt_template")
+            if not options.compile_on_910_95:
+                raise ValueError(f"compile_mode='{options.compile_mode}' is only supported on 910_95. "
+                                 "A2/A3 targets do not support SIMT mix compile.")
+            if options.shared_mem_dynamic_size is None:
+                object.__setattr__(options, "shared_mem_dynamic_size", 221184)
+        elif options.compile_mode == "simt_only":
+            object.__setattr__(options, "force_simt_only", True)
+            object.__setattr__(options, "parallel_mode", "simt")
+            if options.shared_mem_dynamic_size is None:
+                object.__setattr__(options, "shared_mem_dynamic_size", 122880)
+
     def parse_options(self, opts) -> Any:
         # TODO: get available targets when building options?
         if self.target.backend == "npu":
@@ -1295,6 +1297,7 @@ class AscendBackend(BaseBackend):
             # Lazy init enable_dynamic_cv_pipeline if not provided
             if options.enable_dynamic_cv_pipeline is None:
                 object.__setattr__(options, "enable_dynamic_cv_pipeline", is_compile_on_910_95())
+            self.compile_mode_setup(options)
             # Costmodel path should avoid extra BC<->MLIR conversion stages
             # to keep compile-only autotune routing lightweight and stable.
             if getattr(options, "enable_costmodel_backend", False):
