@@ -1,13 +1,14 @@
 name: Documentation
 
 on:
-  pull_request:
-    paths:
-      - 'docs/**/*.md'
-      - 'docs/**/*.mdx'
-      - 'docs/**/_toc.yaml'
-      - '.github/workflows/documentation.yml'
-      - '.github/docs-ci/**'
+  # Disabled: docs gate no longer runs on PRs
+  # pull_request:
+  #   paths:
+  #     - 'docs/**/*.md'
+  #     - 'docs/**/*.mdx'
+  #     - 'docs/**/_toc.yaml'
+  #     - '.github/workflows/documentation.yml'
+  #     - '.github/docs-ci/**'
   # Manual full scans (checkAll) to surface errors in existing docs
   # that incremental PR runs never touch. These never block a PR.
   workflow_dispatch:
