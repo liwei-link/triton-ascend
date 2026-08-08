@@ -159,10 +159,6 @@ template <typename MemAccOpTy>
 LogicalResult tryRewriteUnstructuredLoadStoreFastPath(
     MemAccOpTy op, Location loc, Value srcPtr, Value ptrOffset,
     ArrayRef<int64_t> unstructuredDims, PatternRewriter &rewriter) {
-  assert(isa<triton::PointerType>(srcPtr.getType()) &&
-         "base must be a scalar pointer");
-  assert(isa<RankedTensorType>(ptrOffset.getType()) &&
-         "indices must be a ranked tensor");
 
   if (!canUseIndirectFastPath(srcPtr, ptrOffset)) {
     LLVM_DEBUG({
@@ -539,13 +535,10 @@ LogicalResult UnstructuredMemAccessConverter<MemAccOpTy>::matchAndRewrite(
 
   // Preserve the existing template eligibility limits while using one
   // canonical unstructured load/store op in both mixed compilation modes.
-  bool simtTemplateLoadStoreFastPathEnabled =
+  bool simtFastPathEnabled =
       compileOn91095Flag && forceSimtTemplateFlag &&
       ((!ptrOffsetInfo.isStructured() && sizeInByte < 64) ||
        mixCompileDiscreteMask);
-  bool simtTemplateAtomicFastPathEnabled =
-      compileOn91095Flag && forceSimtTemplateFlag &&
-      (!ptrOffsetInfo.isStructured() || mixCompileDiscreteMask);
   bool rankWithinSimtTemplateLimit = resultShape.size() <= 5;
 
   if constexpr (std::is_same_v<MemAccOpTy, triton::LoadOp> ||
@@ -556,7 +549,7 @@ LogicalResult UnstructuredMemAccessConverter<MemAccOpTy>::matchAndRewrite(
           (ptrOffsetInfo.hasUnstructuredDim() || mixCompileDiscreteMask)) ||
          (unstructureCompileModeFlag ==
               triton::ascend::CompileMode::SimdSimtTemplate &&
-          simtTemplateLoadStoreFastPathEnabled && rankWithinSimtTemplateLimit));
+          simtFastPathEnabled && rankWithinSimtTemplateLimit));
     if (useUnstructuredOp) {
       auto unstructuredDims = ptrOffsetInfo.getUnstructuredDims();
       if (succeeded(tryRewriteUnstructuredLoadStoreFastPath(
@@ -567,9 +560,8 @@ LogicalResult UnstructuredMemAccessConverter<MemAccOpTy>::matchAndRewrite(
 
   if constexpr (std::is_same_v<MemAccOpTy, triton::AtomicRMWOp> ||
                 std::is_same_v<MemAccOpTy, triton::AtomicCASOp>) {
-    if (simtTemplateAtomicFastPathEnabled &&
-        succeeded(tryRewriteIndirectAtomicFastPath(op, srcPtr, ptrOffset,
-                                                   rewriter))) {
+    if (simtFastPathEnabled && succeeded(tryRewriteIndirectAtomicFastPath(
+                                   op, srcPtr, ptrOffset, rewriter))) {
       return success();
     }
   }
@@ -582,8 +574,7 @@ LogicalResult UnstructuredMemAccessConverter<MemAccOpTy>::matchAndRewrite(
     }
     if constexpr (std::is_same_v<MemAccOpTy, triton::LoadOp> ||
                   std::is_same_v<MemAccOpTy, triton::StoreOp>) {
-      if (simtTemplateLoadStoreFastPathEnabled &&
-          !rankWithinSimtTemplateLimit) {
+      if (simtFastPathEnabled && !rankWithinSimtTemplateLimit) {
         auto &os = llvm::dbgs();
         os << "Skip ascend.unstructured_load/store fast path because rank is "
            << resultShape.size() << " (>5), falling back to scalar loop path\n";
