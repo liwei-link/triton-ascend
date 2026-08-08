@@ -1032,7 +1032,7 @@ class NPUOptions:
     auto_blockify_size: int = 1
     add_auto_scheduling: bool = False
     enable_auto_blockify: bool = None
-    compile_on_910_95: bool = None
+    compile_on_910_95: bool = is_compile_on_910_95()
     optimize_dynamic_offset: bool = False
     enable_mask_fallback_conversion: bool = False
     enable_warp_specialization: bool = False
