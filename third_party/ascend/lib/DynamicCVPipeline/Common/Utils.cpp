@@ -3,13 +3,17 @@
 #include "llvm/ADT/TypeSwitch.h"
 #include "llvm/Support/LogicalResult.h"
 
+#include "bishengir/Dialect/HIVM/IR/HIVM.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Math/IR/Math.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/Matchers.h"
 #include "mlir/IR/Operation.h"
 
 #include "ascend/include/DynamicCVPipeline/Common/Utils.h"
@@ -128,6 +132,112 @@ bool isOnlyDirectlyUse(Operation *preOp, Operation *nextOp,
     return false;
   }
   return (*allusers.begin()) == nextOp;
+}
+
+/** Determines if a value is "scalar-like" based on the following criteria:
+ 1. True scalar types (integer, index, or float)
+ 2. Tensor types with empty shape (e.g., tensor<f32>)
+ 3. Constant tensors where all elements have the same value (splat constants)
+ 4. Tensors with shape where all dimensions equal 1 (single-element tensors)
+ */
+bool isScalarLike(Value value) {
+  Type type = value.getType();
+  auto shapedType = dyn_cast<ShapedType>(type);
+
+  // 1. true scalar (int / index / float)
+  if (!shapedType) {
+    return type.isIntOrIndexOrFloat();
+  }
+
+  // 2. tensor with empty shape (e.g. tensor<f32>)
+  ArrayRef<int64_t> shape = shapedType.getShape();
+  if (shape.empty()) {
+    return true;
+  }
+
+  // 3. splat constant tensor (all elements identical)
+  Attribute attr;
+  if (matchPattern(value, m_Constant(&attr))) {
+    auto denseAttr = dyn_cast<DenseIntOrFPElementsAttr>(attr);
+    return denseAttr && denseAttr.isSplat() &&
+           denseAttr.getElementType().isIntOrIndexOrFloat();
+  }
+
+  // 4. single-element tensor (all dims == 1)
+  return llvm::all_of(shape, [](int64_t dim) { return dim == 1; });
+}
+
+bool isStoreLike(mlir::Operation *op) {
+  if (isa<bufferization::MaterializeInDestinationOp, hivm::StoreOp>(op)) {
+    return true;
+  }
+  return false;
+}
+
+bool isViewLike(mlir::Operation *op) {
+  if (isa<tensor::ExtractSliceOp, ViewLikeOpInterface>(op)) {
+    return true;
+  }
+  return false;
+}
+
+bool isZeroFillValue(mlir::Value v) {
+  auto fill = v.getDefiningOp<linalg::FillOp>();
+  if (!fill) {
+    return false;
+  }
+  if (fill.getInputs().empty()) {
+    return false;
+  }
+  Value insVal = fill.getInputs()[0];
+  auto constOp = insVal.getDefiningOp<arith::ConstantOp>();
+  if (!constOp) {
+    return false;
+  }
+  Attribute value = constOp.getValue();
+  if (auto intAttr = dyn_cast<IntegerAttr>(value)) {
+    return intAttr.getValue().isZero();
+  }
+  if (auto fpAttr = dyn_cast<FloatAttr>(value)) {
+    return fpAttr.getValue().isZero();
+  }
+  return false;
+}
+
+// Read the `hivm.tightly_coupled_buffer<N>` id attached to a `memref.alloc`
+// via its `annotation.mark` user. Returns nullopt when no annotation with
+// a concrete id is present, or when `allocVal` is null.
+std::optional<int> getTightlyCoupledBufferId(Value allocVal) {
+  if (!allocVal) {
+    return std::nullopt;
+  }
+  for (Operation *user : allocVal.getUsers()) {
+    if (auto tcbAttr = user->getAttrOfType<hivm::HIVMTightlyCoupledBufferAttr>(
+            CVPipeline::kTightlyCoupledBufferAttr)) {
+      auto id = tcbAttr.getId();
+      if (id.has_value()) {
+        return id;
+      }
+    }
+  }
+  return std::nullopt;
+}
+
+// Walk back through opaque memref casts to recover the underlying
+// `memref.alloc` that backs a `bufferization.to_tensor`'s source.
+Value traceBackToMemrefAlloc(Value v) {
+  while (true) {
+    if (auto cast = v.getDefiningOp<memref::MemorySpaceCastOp>()) {
+      v = cast.getSource();
+      continue;
+    }
+    if (auto cast = v.getDefiningOp<memref::CastOp>()) {
+      v = cast.getSource();
+      continue;
+    }
+    break;
+  }
+  return v;
 }
 
 } // namespace CVPipeline

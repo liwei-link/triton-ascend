@@ -146,6 +146,15 @@ void normalizeDiscreteMaskAccessForFallback(MemAccOpTy &op,
 //    If SIMT template lowering cannot be formed for any operation,
 //    conversion gracefully falls back to the legacy scalar-loop lowering path
 // ======================================================================================
+static bool canUseIndirectFastPath(Value srcPtr, Value ptrOffset) {
+  if (!srcPtr || !ptrOffset)
+    return false;
+  auto ptrTy = dyn_cast<triton::PointerType>(srcPtr.getType());
+  if (!ptrTy || isa<ShapedType>(ptrTy.getPointeeType()))
+    return false;
+  return isa<RankedTensorType>(ptrOffset.getType());
+}
+
 template <typename MemAccOpTy>
 LogicalResult tryRewriteUnstructuredLoadStoreFastPath(
     MemAccOpTy op, Location loc, Value srcPtr, Value ptrOffset,
@@ -154,6 +163,15 @@ LogicalResult tryRewriteUnstructuredLoadStoreFastPath(
          "base must be a scalar pointer");
   assert(isa<RankedTensorType>(ptrOffset.getType()) &&
          "indices must be a ranked tensor");
+
+  if (!canUseIndirectFastPath(srcPtr, ptrOffset)) {
+    LLVM_DEBUG({
+      llvm::dbgs()
+          << "Skip SIMT indirect fast path: src must be scalar elem ptr and "
+             "offset must be an int tensor (reject block_ptr)\n";
+    });
+    return failure();
+  }
 
   if constexpr (std::is_same_v<MemAccOpTy, triton::LoadOp>) {
     // Keep IntToPtr bases visible through AddPtr so the type converter can
