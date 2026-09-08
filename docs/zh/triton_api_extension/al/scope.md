@@ -51,16 +51,6 @@ al.scope 是 triton.language.extra.ascend 模块中的一个上下文管理器�
     <td>Cube Unit (矩阵核心)</td>
     <td>适用于矩阵计算，特别是矩阵乘法 (Matrix Multiplication, GEMM) 和卷积操作。这通常与 tl.dot 等操作相关联。</td>
   </tr>
-  <tr>
-    <td>&quot;SIMT&quot;</td>
-    <td>Single instruction multiple thread</td>
-    <td>-</td>
-  </tr>
-  <tr>
-    <td>&quot;SIMD&quot;</td>
-    <td>Single instruction multiple data</td>
-    <td>-</td>
-  </tr>
 </table>
 
 ## 3. 约束说明
